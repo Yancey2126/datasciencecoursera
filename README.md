@@ -1,2 +1,2 @@
 # datasciencecoursera
-For JHU Data Science courses in Coursera
+This is the repository for JHU Data Science Series on Coursera, including code for assignment and other mateirals.
