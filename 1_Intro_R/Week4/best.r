@@ -1,7 +1,14 @@
 setwd("/Users/yangchen/Desktop/Coursera/Data_Sci_Coursera/Intro_R/Week4/rprog-data-ProgAssignment3-data")
 getwd()
 
-rankhospital <- function(state, outcome, num = "best") {
+outcome <- read.csv("outcome-of-care-measures.csv", colClasses = "character")
+head(outcome)
+
+outcome[, 11] <- as.numeric(outcome[, 11])
+## You may get a warning about NAs being introduced; that is okay
+hist(outcome[, 11])
+
+best <- function(state, outcome) {
         options(stringsAsFactors = FALSE)
         # Read outcome data
         ocdata <- read.csv("outcome-of-care-measures.csv")
@@ -27,23 +34,41 @@ rankhospital <- function(state, outcome, num = "best") {
                 par_mort <- data.frame(X = stateMort$Name, Y = stateMort[[outcome]])
                 # Exclude NAs
                 par_mort <- par_mort[complete.cases(par_mort), ]
-                # Sort by rankings and then by alphabetic name
-                arrangedData <- arrange(par_mort, par_mort$Y, par_mort$X)
-
-                if (num == "best") {
-                        arrangedData[1, 1]
-                } else if (num == "worst") {
-                        arrangedData[nrow(arrangedData), 1]
-                } else {
-                        arrangedData[num, 1]   
-                }
-               
+                # Return the best hospital name
+                vec <- par_mort$X[which(par_mort$Y == min(par_mort$Y))]
+                # Solve the tie situation
+                sort(vec)[1]
         }
 }
 
+best("MD", "pneumonia")
 
-rankhospital("TX", "heart failure", 4)
 
-rankhospital("MD", "heart attack", "worst")
+best("SC", "heart attack")
 
-rankhospital("MN", "heart attack", 5000)
+best("NY", "pneumonia")
+
+best("AK", "pneumonia")
+
+
+
+best1 <- function(state, outcome) {
+        
+        ## Read the outcome data
+        dat <- read.csv("outcome-of-care-measures.csv", colClasses = "character")
+        ## Check that state and outcome are valid
+        if (!state %in% unique(dat[, 7])) {
+                stop("invalid state")
+        }
+        switch(outcome, `heart attack` = {
+                col = 11
+        }, `heart failure` = {
+                col = 17
+        }, pneumonia = {
+                col = 23
+        }, stop("invalid outcome"))
+        ## Return hospital name in that state with lowest 30-day death rate
+        df = dat[dat$State == state, c(2, col)]
+        df[which.min(df[, 2]), 1]
+}
+best1("TX", "heart attack")

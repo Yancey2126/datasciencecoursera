@@ -1,14 +1,7 @@
-setwd("/Users/yangchen/Desktop/Coursera/Data_Sci_Coursera/rprog-data-ProgAssignment3-data")
+setwd("/Users/yangchen/Desktop/Coursera/Data_Sci_Coursera/Intro_R/Week4/rprog-data-ProgAssignment3-data")
 getwd()
 
-outcome <- read.csv("outcome-of-care-measures.csv", colClasses = "character")
-head(outcome)
-
-outcome[, 11] <- as.numeric(outcome[, 11])
-## You may get a warning about NAs being introduced; that is okay
-hist(outcome[, 11])
-
-best <- function(state, outcome) {
+rankhospital <- function(state, outcome, num = "best") {
         options(stringsAsFactors = FALSE)
         # Read outcome data
         ocdata <- read.csv("outcome-of-care-measures.csv")
@@ -33,8 +26,33 @@ best <- function(state, outcome) {
                 stateMort <- mortality[mortality$State == state, ]
                 par_mort <- data.frame(X = stateMort$Name, Y = stateMort[[outcome]])
                 # Exclude NAs
-                par_mort <- par_mort[complete.cases(par_mort), ]
-                # Return the best hospital name
-                with(par_mort, X[Y == min(Y)])
+                # par_mort <- par_mort[complete.cases(par_mort), ]
+                par_mort <- na.omit(par_mort)
+                # Sort by rankings and then by alphabetic name
+                arrangedData <- arrange(par_mort, par_mort$Y, par_mort$X)
+
+                if (num == "best") {
+                        arrangedData[1, 1]
+                } else if (num == "worst") {
+                        arrangedData[nrow(arrangedData), 1]
+                } else {
+                        arrangedData[num, 1]   
+                }
+               
         }
 }
+
+
+rankhospital("TX", "heart failure", 4)
+
+rankhospital("MD", "heart attack", "worst")
+
+rankhospital("MN", "heart attack", 5000)
+
+rankhospital("NC", "heart attack", "worst")
+
+rankhospital("WA", "heart attack", 7)
+
+rankhospital("TX", "pneumonia", 10)
+
+rankhospital("NY", "heart attack", 7)
