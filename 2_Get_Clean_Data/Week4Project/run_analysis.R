@@ -55,4 +55,4 @@ CompleteDt$activity <- factor(CompleteDt$activity, levels = Labels[, 1], labels 
 # Create the second data set with means -----------------------------------------------------------
 DTmelted <- melt(CompleteDt, id = c("subjects", "activity"))
 newDt <- dcast(DTmelted, subject + activity ~ variable, mean)
-write.table(newDt, "tidy.txt")
+write.table(newDt, "tidy.txt", row.names = FALSE)
