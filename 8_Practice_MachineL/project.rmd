@@ -1,0 +1,121 @@
+---
+title: "Coursera_PML_FinalProject"
+author: "Yang Chen"
+date: "3/11/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Practical Machine Learning Project
+### Data Science Specialization on Coursera (JHU)
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website [here](http://groupware.les.inf.puc-rio.br/har) (see the section on the Weight Lifting Exercise Dataset).
+
+```{r packages}
+library(data.table)
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(ggplot2)
+library(randomForest)
+library(dplyr)
+
+```
+
+## Accessing and Loading Data
+
+Quickly navigate through the two data files, we see three types of missing value：
+- "NA"
+- "#DIV/0！"
+- blank cell
+
+```{r load data}
+set.seed(42)
+train_url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+test_url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+training <- fread(train_url, na.strings = c('NA', '#DIV/0!', ''))
+testing <- fread(test_url, na.strings = c('NA', '#DIV/0!', ''))
+
+cat('There are', nrow(training), 'observations in the training set and ', nrow(testing),
+    'observations in the testing set')
+cat(ncol(training), 'features are included')
+```
+
+## Cleaning Data and Seleting Features
+Take a look at the summary of the data set. Firstly, remove the first 7 features since they only contain informations such as participants' names, id numbers and dates, which doesn't really correlate with our model's target(types of body movements). So we will remove them first. 
+```{r}
+glimpse(training)
+training <- training[, -c(1:7)]
+testing <- testing[, -c(1:7)]
+```
+Then let's take a look at the missing value percentages of each feature.
+```{r}
+for (feature in colnames(training)) {
+        curr_feature <- select(training, feature)
+        (curr_feature %>% is.na() %>% colSums() * 100 / nrow(training)) %>% paste('---', feature) %>% print()
+}
+```
+
+There are many features(especially the last couple ones) containing hugh portion of missing values, making those features actually provide few information for our model. So we remove features with more than 90% values being NA. 
+```{r clean}
+colOmit <- (colSums(is.na(training) | training == "") > 0.9*dim(training)[1]) %>% which()
+training <- training %>% select(-colOmit)
+dim(training)
+
+# Remove exactly the same columns we chose in the training set to keep consistency
+testing <- testing %>% select(-colOmit)
+dim(testing)
+
+# Check which features are left
+glimpse(training)
+```
+
+Then split the training data into two parts, one for training models and another for self-testing
+```{r partiton}
+inTrain <- createDataPartition(training$classe, p = 0.7, list = FALSE)
+self_training <- training[inTrain, ]
+self_testing <- training[-inTrain, ]
+dim(self_testing); dim(self_training)
+```
+
+## Model Training
+We will train three different models using our clean training data set: 
+- Decision Tree
+- Random Forest
+- Gradient Boosting 
+We apply 5-folds CV here to deal with overfitting
+```{r , echo=FALSE}
+trControl <- trainControl(method = 'cv', n = 5)
+fit_DT <- train(classe~ ., data = self_training, method = 'rpart', trControl = trControl)
+rpart.plot(fit_DT$finalModel)
+
+pred_DT <- predict(fit_DT, self_testing)
+confusionMatrix(pred_DT, self_testing$classe)
+```
+The accuracy for classification tree on this data set is roughly 0.5, which is not very precise. So we apply random forest next to see if there is any improvement
+```{r}
+fit_RF <- train(classe~ ., data = self_training, method = 'rf', trControl = trControl, verbose = FALSE)
+print(fit_RF)
+plot(fit_RF,main = "Accuracy of Random forest model by number of predictors")
+pred_RF <- predict(fit_RF, self_testing)
+confusionMatrix(pred_RF, self_testing$classe)
+plot(fit_RF$finalModel, main = 'Model error of RF by tree numbers')
+```
+With random forest, the performance of the model is much better.
+```{r gbm}
+fit_GBM <- train(classe~ ., data = self_training, method = 'gbm', trControl = trControl, verbose = FALSE)
+print(fit_GBM)
+plot(fit_GBM)
+pred_GBM <- predict(fit_GBM, self_testing)
+confusionMatrix(pred_GBM, self_testing$classe)
+```
+
+Use the method with highest accuracy to predict the test set
+```{r predTest}
+FinalPred <- predict(fit_RF, newdata = testing)
+FinalPred
+```
